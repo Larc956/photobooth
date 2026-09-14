@@ -22,7 +22,6 @@
         .strip-wrapper.selected::after { content: "✓"; position: absolute; top: -10px; right: -10px; background: var(--text-color); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1rem;}
         .strip-wrapper img { height: 100%; width: auto; object-fit: contain; display: block; border-radius: 4px; }
         #empty-state { text-align: center; width: 100%; font-size: 1.3rem; color: #999; margin-top: 60px; }
-
         /* Print formatting */
         #print-area { display: none; }
         @media print {
@@ -49,11 +48,11 @@
             <button id="view-btn" class="print-btn disabled" onclick="viewSelected()" style="background: #28a745;">View Session</button>
             <button id="edit-btn" class="print-btn disabled" onclick="editSelected()" style="background: #007bff;">Customize & Reprint</button>
             <button id="print-btn" class="print-btn disabled" onclick="printSelected()">Quick Print</button>
+            <button id="delete-btn" class="print-btn disabled" onclick="deleteSelected()" style="background: #dc3545;">Delete</button>
         </div>
     </header>
     <div class="gallery-container" id="gallery-grid"></div>
     <div id="print-area"></div>
-
     <script>
         let selectedSessionId = null;
         let selectedStripUrl = null;
@@ -70,18 +69,22 @@
         window.onload = async () => {
             document.getElementById('event-tag').innerText = currentEvent.toUpperCase();
             const grid = document.getElementById('gallery-grid');
+
             try {
                 const res = await fetch(`/api/${currentEvent}/sessions`);
                 const data = await res.json();
+
                 if (data.success && data.sessions.length > 0) {
                     data.sessions.forEach(session => {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'strip-wrapper';
                         wrapper.onclick = () => selectStrip(wrapper, session.id, session.strip, session.layout);
+
                         const img = document.createElement('img');
                         img.src = session.strip;
                         img.loading = "lazy";
                         wrapper.appendChild(img);
+
                         grid.appendChild(wrapper);
                     });
                 } else {
@@ -102,6 +105,7 @@
             document.getElementById('view-btn').classList.remove('disabled');
             document.getElementById('edit-btn').classList.remove('disabled');
             document.getElementById('print-btn').classList.remove('disabled');
+            document.getElementById('delete-btn').classList.remove('disabled');
         }
 
         function viewSelected() {
@@ -127,9 +131,30 @@
             if (selectedLayout === '1x4' || selectedLayout === '1x3') {
                 const img2 = document.createElement('img'); 
                 img2.src = selectedStripUrl;
-                printArea.appendChild(img2);
+                printArea.appendChild(img2); 
             }
+
             setTimeout(() => { window.print(); }, 400);
+        }
+
+        async function deleteSelected() {
+            if (!selectedSessionId) return;
+            if (!confirm(`Are you sure you want to permanently delete session "${selectedSessionId}"?`)) return;
+
+            try {
+                const res = await fetch(`/api/${currentEvent}/sessions/${selectedSessionId}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Session deleted successfully.');
+                    window.location.reload();
+                } else {
+                    alert('Failed to delete: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Network error while deleting session.');
+            }
         }
     </script>
 </body>

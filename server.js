@@ -7,11 +7,13 @@ const multer = require('multer');
 const os = require('os');
 const { exec, spawn } = require('child_process');
 
-let S3Client, PutObjectCommand;
+let S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand;
 try {
     const s3Package = require('@aws-sdk/client-s3');
     S3Client = s3Package.S3Client;
     PutObjectCommand = s3Package.PutObjectCommand;
+    ListObjectsV2Command = s3Package.ListObjectsV2Command;
+    DeleteObjectsCommand = s3Package.DeleteObjectsCommand;
 } catch (e) {
     console.log("  [@aws-sdk/client-s3 not installed - Cloud storage fallback to local/tunnel]");
 }
@@ -345,6 +347,52 @@ app.get('/api/:eventCode/sessions', async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+async function deleteFromCloud(prefix) {
+    if (!S3Client || !process.env.R2_ACCOUNT_ID) return;
+    try {
+        const client = new S3Client({
+            region: 'auto',
+            endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            credentials: {
+                accessKeyId: process.env.R2_ACCESS_KEY_ID,
+                secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+            },
+        });
+        const listRes = await client.send(new ListObjectsV2Command({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Prefix: prefix
+        }));
+        if (listRes.Contents && listRes.Contents.length > 0) {
+            await client.send(new DeleteObjectsCommand({
+                Bucket: process.env.R2_BUCKET_NAME,
+                Delete: { Objects: listRes.Contents.map(obj => ({ Key: obj.Key })) }
+            }));
+        }
+    } catch (err) {
+        console.error("Cloud delete error:", err);
+    }
+}
+
+app.delete('/api/:eventCode/sessions/:sessionId', async (req, res) => {
+    const eventCode = sanitizeEventCode(req.params.eventCode);
+    const sessionId = req.params.sessionId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const { galleriesDir } = await ensureEventDirs(eventCode);
+    const sessionDir = path.join(galleriesDir, sessionId);
+
+    try {
+        // Delete local folder
+        if (existsSync(sessionDir)) {
+            await fs.rm(sessionDir, { recursive: true, force: true });
+        }
+        // Delete cloud files
+        await deleteFromCloud(`events/${eventCode}/galleries/${sessionId}/`);
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

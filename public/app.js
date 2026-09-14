@@ -962,11 +962,19 @@ async function generateCompositeImage() {
             h = rect.height * scaleY;
         }
 
-        ctx.filter = currentFilter;
-        const htmlImg = new Image(); 
-        htmlImg.crossOrigin = "Anonymous";
-        await new Promise(r => { htmlImg.onload = r; htmlImg.onerror = r; htmlImg.src = img.src; });
+        const rawImg = new Image(); 
+        rawImg.crossOrigin = "Anonymous";
+        await new Promise(r => { rawImg.onload = r; rawImg.onerror = r; rawImg.src = img.src; });
 
+        // Bake filter into an offscreen canvas to prevent clipping bugs
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = rawImg.width;
+        offCanvas.height = rawImg.height;
+        const offCtx = offCanvas.getContext('2d');
+        if (currentFilter && currentFilter !== 'none') offCtx.filter = currentFilter;
+        offCtx.drawImage(rawImg, 0, 0);
+
+        const htmlImg = offCanvas;
         let imgAspect = htmlImg.width / htmlImg.height;
         let cellAspect = w / h;
         let drawW, drawH, drawX, drawY;
@@ -1145,10 +1153,19 @@ function createAnimatedStripVideo() {
                         h = rect.height * scaleY;
                     }
 
-                    ctx.filter = currentFilter;
                     let imgW = isVideo ? vid.videoWidth : sourceToDraw.naturalWidth;
                     let imgH = isVideo ? vid.videoHeight : sourceToDraw.naturalHeight;
                     if (!imgW || !imgH) { imgW = 4; imgH = 3; }
+
+                    // Bake filter for the current video frame
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = imgW;
+                    offCanvas.height = imgH;
+                    const offCtx = offCanvas.getContext('2d');
+                    if (currentFilter && currentFilter !== 'none') offCtx.filter = currentFilter;
+                    offCtx.drawImage(sourceToDraw, 0, 0, imgW, imgH);
+
+                    sourceToDraw = offCanvas;
 
                     let imgAspect = imgW / imgH;
                     let cellAspect = w / h;

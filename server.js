@@ -286,9 +286,14 @@ app.post('/api/:eventCode/upload', upload.fields([
         // ADDED: Uploads the HTML template directly to your Cloudflare R2 Bucket
         await uploadToCloud(`events/${eventCode}/galleries/${sessionFolder}/index.html`, Buffer.from(htmlTemplate, 'utf8'), 'text/html');
 
-        // ADDED: Uses your custom Domain for the QR Code
+        // Default to the Render/Local URL
         const baseUrl = process.env.PUBLIC_URL || globalTunnelUrl || `http://${getLocalIp()}:${PORT}`;
         let galleryUrl = `${baseUrl.replace(/\/$/, '')}/events/${eventCode}/galleries/${sessionFolder}/index.html`;
+
+        // OVERRIDE: If R2 is active, force the QR code to point directly to permanent Cloudflare storage
+        if (process.env.R2_PUBLIC_DOMAIN) {
+            galleryUrl = `https://${process.env.R2_PUBLIC_DOMAIN.replace(/\/$/, '')}/events/${eventCode}/galleries/${sessionFolder}/index.html`;
+        }
 
         let qrCodeDataUrl = '';
         try { qrCodeDataUrl = await QRCode.toDataURL(galleryUrl, { color: { dark: '#ff4d6d', light: '#ffffff' }, width: 400 }); } 

@@ -381,28 +381,10 @@ app.get('/gallery', (req, res) => res.redirect('/e/default/gallery'));
 app.get(['/', '/start', '/layout', '/preframe', '/photo', '/edit', '/qr'], (req, res) => res.redirect('/e/default'));
 
 // ==========================================
-// START SERVER & CLOUDFLARE TUNNEL
+// START SERVER
 // ==========================================
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`===================================================`);
-    console.log(`  Photobooth running at: http://localhost:${PORT}`);
-    console.log(`  LAN URL:               http://${getLocalIp()}:${PORT}`);
-
-    const cloudflaredBin = path.join(__dirname, 'cloudflared.exe');
-    if (existsSync(cloudflaredBin)) {
-        console.log(`  Starting Free Cloudflare Tunnel...`);
-        const tunnel = spawn(cloudflaredBin, ['tunnel', '--url', `http://localhost:${PORT}`]);
-
-        tunnel.stderr.on('data', (data) => {
-            const output = data.toString();
-            const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
-            if (match && !globalTunnelUrl) {
-                globalTunnelUrl = match[0];
-                console.log(`  FREE ONLINE DOMAIN: ${globalTunnelUrl}`);
-            }
-        });
-    } else {
-        console.log(`  (cloudflared.exe not found. LAN IP will be used for QR codes)`);
-    }
+    console.log(`  Photobooth running on port: ${PORT}`);
     console.log(`===================================================`);
 });

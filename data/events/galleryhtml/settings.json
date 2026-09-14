@@ -1,0 +1,79 @@
+{
+  "cameraMode": "webcam",
+  "enable1x3": false,
+  "enable1x4": true,
+  "enable2x2": false,
+  "enable3x_grid": true,
+  "defaultCameraId": "",
+  "textColor": "#ff4d6d",
+  "bgImage": "",
+  "totalShots": 8,
+  "captureTimer": 5,
+  "frames1x3": [],
+  "frames1x4": [],
+  "frames2x2": [],
+  "frames3x_grid": [],
+  "stickers": [],
+  "marginPresets": {
+    "1x3": [
+      {
+        "name": "Default 1x3",
+        "top": 20,
+        "bot": 60,
+        "side": 20,
+        "gap": 15
+      }
+    ],
+    "1x4": [
+      {
+        "name": "Default 1x4",
+        "top": 20,
+        "bot": 70,
+        "side": 20,
+        "gap": 15
+      }
+    ],
+    "2x2": [
+      {
+        "name": "Default 2x2",
+        "top": 20,
+        "bot": 60,
+        "side": 20,
+        "gap": 15
+      }
+    ],
+    "3x_grid": [
+      {
+        "name": "Default 3-Shot",
+        "top": 20,
+        "bot": 60,
+        "side": 20,
+        "gap": 15
+      }
+    ]
+  },
+  "layout1x3": {
+    "paddingTop": 20,
+    "paddingBottom": 60,
+    "paddingSide": 20,
+    "gap": 15
+  },
+  "layout1x4": {
+    "paddingTop": 20,
+    "paddingBottom": 70,
+    "paddingSide": 20,
+    "gap": 15
+  },
+  "layout2x2": {
+    "paddingTop": 20,
+    "paddingBottom": 60,
+    "paddingSide": 20,
+    "gap": 15
+  },
+  "layout3x_grid": {
+    "paddingTop": 20,
+    "paddingBottom": 60,
+    "paddingSide": 20,
+    "gap": 15
+  }
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photobooth Strip Gallery</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        :root { --text-color: #ff4d6d; }
+        * { box-sizing: border-box; font-family: 'Nunito', sans-serif; }
+        body { margin: 0; padding: 0; background-color: #fff0f3; color: #333; display: flex; flex-direction: column; height: 100vh;}
+        header { background: white; padding: 20px 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; z-index: 10;}
+        h1 { margin: 0; color: var(--text-color); font-weight: 900; font-size: 1.8rem; }
+        .event-tag { font-size: 0.9rem; background: #ffe6ea; color: var(--text-color); padding: 5px 15px; border-radius: 20px; font-weight: 900; margin-left: 10px;}
+        .print-btn { background: var(--text-color); color: white; border: none; padding: 10px 18px; font-size: 0.9rem; font-weight: 900; border-radius: 30px; cursor: pointer; transition: 0.2s;}
+        .print-btn:active { transform: scale(0.95); }
+        .print-btn.disabled { background: #ccc; pointer-events: none; }
+        .gallery-container { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 25px; align-items: flex-start; justify-content: center;}
+        .strip-wrapper { height: 360px; display: inline-flex; background: white; padding: 10px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); cursor: pointer; transition: 0.2s; border: 4px solid transparent; position: relative;}
+        .strip-wrapper:hover { transform: translateY(-4px); }
+        .strip-wrapper.selected { border-color: var(--text-color); transform: scale(1.03); box-shadow: 0 12px 25px rgba(255, 77, 109, 0.25);}
+        .strip-wrapper.selected::after { content: "✓"; position: absolute; top: -10px; right: -10px; background: var(--text-color); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1rem;}
+        .strip-wrapper img { height: 100%; width: auto; object-fit: contain; display: block; border-radius: 4px; }
+        #empty-state { text-align: center; width: 100%; font-size: 1.3rem; color: #999; margin-top: 60px; }
+
+        /* Print formatting */
+        #print-area { display: none; }
+        @media print {
+            body > :not(#print-area) { display: none !important; }
+            @page { size: 4in 6in; margin: 0 !important; }
+            html, body { width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important; background: white !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+            #print-area { display: block !important; position: relative !important; width: 4in !important; height: 6in !important; margin: auto !important; background: white !important; overflow: hidden !important; }
+            #print-area.print-1x3, #print-area.print-1x4 { display: grid !important; grid-template-columns: 50% 50% !important; width: 4in !important; height: 6in !important; }
+            #print-area.print-1x3 img, #print-area.print-1x4 img { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; }
+            #print-area.print-2x2 { display: flex !important; align-items: center !important; justify-content: center !important; }
+            #print-area.print-2x2 img { width: 4in !important; height: 6in !important; object-fit: cover !important; }
+            #print-area.print-3x_grid { display: block !important; position: relative !important; }
+            #print-area.print-3x_grid img { position: absolute !important; top: 50% !important; left: 50% !important; width: 6in !important; height: 4in !important; transform: translate(-50%, -50%) rotate(90deg) !important; object-fit: cover !important; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="display: flex; align-items: center;">
+            <h1>Strip Gallery</h1>
+            <span class="event-tag" id="event-tag">EVENT</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button id="view-btn" class="print-btn disabled" onclick="viewSelected()" style="background: #28a745;">View Session</button>
+            <button id="edit-btn" class="print-btn disabled" onclick="editSelected()" style="background: #007bff;">Customize & Reprint</button>
+            <button id="print-btn" class="print-btn disabled" onclick="printSelected()">Quick Print</button>
+        </div>
+    </header>
+    <div class="gallery-container" id="gallery-grid"></div>
+    <div id="print-area"></div>
+
+    <script>
+        let selectedSessionId = null;
+        let selectedStripUrl = null;
+        let selectedLayout = null;
+
+        function getEventCode() {
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            if (parts[0] === 'e' && parts[1]) return parts[1].toLowerCase();
+            return 'default';
+        }
+
+        const currentEvent = getEventCode();
+
+        window.onload = async () => {
+            document.getElementById('event-tag').innerText = currentEvent.toUpperCase();
+            const grid = document.getElementById('gallery-grid');
+            try {
+                const res = await fetch(`/api/${currentEvent}/sessions`);
+                const data = await res.json();
+                if (data.success && data.sessions.length > 0) {
+                    data.sessions.forEach(session => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'strip-wrapper';
+                        wrapper.onclick = () => selectStrip(wrapper, session.id, session.strip, session.layout);
+                        const img = document.createElement('img');
+                        img.src = session.strip;
+                        img.loading = "lazy";
+                        wrapper.appendChild(img);
+                        grid.appendChild(wrapper);
+                    });
+                } else {
+                    grid.innerHTML = `<div id="empty-state">No photostrips found for ${currentEvent.toUpperCase()} yet!</div>`;
+                }
+            } catch (err) {
+                grid.innerHTML = '<div id="empty-state">Error loading gallery.</div>';
+            }
+        };
+
+        function selectStrip(element, sessionId, url, layout) {
+            document.querySelectorAll('.strip-wrapper').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedSessionId = sessionId;
+            selectedStripUrl = url;
+            selectedLayout = layout || '1x4';
+
+            document.getElementById('view-btn').classList.remove('disabled');
+            document.getElementById('edit-btn').classList.remove('disabled');
+            document.getElementById('print-btn').classList.remove('disabled');
+        }
+
+        function viewSelected() {
+            if (!selectedSessionId) return;
+            window.open(`/events/${currentEvent}/galleries/${selectedSessionId}/index.html`, '_blank');
+        }
+
+        function editSelected() {
+            if (!selectedSessionId) return;
+            window.location.href = `/e/${currentEvent}?session=${selectedSessionId}&layout=${selectedLayout}`;
+        }
+
+        function printSelected() {
+            if (!selectedStripUrl) return;
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = '';
+            printArea.className = `print-${selectedLayout}`;
+
+            const img1 = document.createElement('img'); 
+            img1.src = selectedStripUrl;
+            printArea.appendChild(img1); 
+
+            if (selectedLayout === '1x4' || selectedLayout === '1x3') {
+                const img2 = document.createElement('img'); 
+                img2.src = selectedStripUrl;
+                printArea.appendChild(img2);
+            }
+            setTimeout(() => { window.print(); }, 400);
+        }
+    </script>
+</body>
+</html>

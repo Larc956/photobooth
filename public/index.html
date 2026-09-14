@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Photobooth</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div id="loading-overlay" class="hidden">
+        <div class="loader"></div>
+        <h2 id="loading-text">Processing your memories...</h2>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="start-screen" class="screen active">
+        <div class="event-pill" id="event-badge">Event: DEFAULT</div>
+        <h1 id="start-btn">Touch to Start</h1>
+    </div>
+
+    <!-- LAYOUT SCREEN -->
+    <div id="layout-screen" class="screen">
+        <h2>Choose Your Format</h2>
+        <div class="layout-options">
+            <div class="layout-card" id="layout-card-1x3" onclick="selectLayout('1x3')">
+                <div class="icon-1x3"><div></div><div></div><div></div></div>
+                <p>3-Shot Strip (2x6")</p>
+            </div>
+            <div class="layout-card" id="layout-card-1x4" onclick="selectLayout('1x4')">
+                <div class="icon-1x4"><div></div><div></div><div></div><div></div></div>
+                <p>Classic 1x4 Strip (2x6")</p>
+            </div>
+            <div class="layout-card" id="layout-card-2x2" onclick="selectLayout('2x2')">
+                <div class="icon-2x2"><div></div><div></div><div></div><div></div></div>
+                <p>Square 2x2 Grid (4x6")</p>
+            </div>
+            <div class="layout-card" id="layout-card-3x_grid" onclick="selectLayout('3x_grid')">
+                <div class="icon-3x_grid"><div></div><div></div><div class="wide-cell"></div></div>
+                <p>3-Shot Grid (6x4")</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRE-CAPTURE FRAME & SESSION CONFIG -->
+    <div id="preframe-screen" class="screen">
+        <h2>Choose Your Frame Style</h2>
+        <div id="preframe-options-container" class="preframe-grid"></div>
+        
+        <div class="config-panel">
+            <div class="segmented-control">
+                <button id="mode-auto" class="active" onclick="setCaptureMode('auto')">Automatic</button>
+                <button id="mode-manual" onclick="setCaptureMode('manual')">Manual</button>
+            </div>
+            <div class="config-row">
+                <label>Flash</label>
+                <label class="switch">
+                    <input type="checkbox" id="flash-toggle" checked>
+                    <span class="slider round"></span>
+                </label>
+                <select id="camera-select"><option value="">Default Web Camera</option></select>
+            </div>
+            <button class="print-btn" style="margin-top: 15px;" onclick="confirmFrameAndStartCamera()">Start Session</button>
+        </div>
+    </div>
+
+    <!-- CAPTURE SCREEN -->
+    <div id="capture-screen" class="screen">
+        <div class="camera-container" id="camera-container">
+            <video id="webcam" autoplay playsinline muted></video>
+            <!-- Real-time Live Frame Overlay on Live Feed -->
+            <div id="capture-live-overlay" class="capture-live-overlay"></div>
+            <img id="shot-preview-overlay" class="hidden" src="">
+            <div id="timer-display" class="hidden">5</div>
+            <div id="flash-overlay"></div> 
+            <div id="recording-indicator" class="hidden">● REC</div>
+        </div>
+        <div class="progress">Shot <span id="shot-counter">1</span> of <span id="total-shots-counter">8</span></div>
+        <button id="manual-capture-btn" class="print-btn hidden" style="max-width: 300px; margin-top: 20px;" onclick="triggerManualShot()">📷 Take Shot</button>
+    </div>
+
+    <!-- EDIT SCREEN -->
+    <div id="edit-screen" class="screen layout-edit-mode">
+        <div class="column preview-column">
+            <div id="strip-preview" class="strip">
+                <div id="static-frame-bg" class="frame-bg"></div>
+                <div class="photo-cell" id="cell-1" onclick="selectPhoto(0)"><img src="" class="shot-preview" id="preview-1"></div>
+                <div class="photo-cell" id="cell-2" onclick="selectPhoto(1)"><img src="" class="shot-preview" id="preview-2"></div>
+                <div class="photo-cell" id="cell-3" onclick="selectPhoto(2)"><img src="" class="shot-preview" id="preview-3"></div>
+                <div class="photo-cell" id="cell-4" onclick="selectPhoto(3)"><img src="" class="shot-preview" id="preview-4"></div>
+                <div id="static-frame-overlay" class="frame-overlay"></div>
+            </div>
+        </div>
+        
+        <div class="column controls-column">
+            
+            <div class="option-group" id="frame-shape-group">
+                <h3>Frame Shape</h3>
+                <div class="segmented-control" id="slot-tabs-container" style="margin-bottom: 12px; box-shadow: none; background: transparent;">
+                    <button id="slot-tab-0" class="slot-tab-btn active" onclick="selectPhoto(0)">Slot 1</button>
+                    <button id="slot-tab-1" class="slot-tab-btn" onclick="selectPhoto(1)">Slot 2</button>
+                    <button id="slot-tab-2" class="slot-tab-btn" onclick="selectPhoto(2)">Slot 3</button>
+                    <button id="slot-tab-3" class="slot-tab-btn" onclick="selectPhoto(3)">Slot 4</button>
+                </div>
+                <div class="shape-grid">
+                    <button id="shape-btn-basic" class="small-btn shape-btn active" onclick="setSlotShape('basic')">⬜ Basic</button>
+                    <button id="shape-btn-heart" class="small-btn shape-btn" onclick="setSlotShape('heart')">❤️ Heart</button>
+                    <button id="shape-btn-circle" class="small-btn shape-btn" onclick="setSlotShape('circle')">⭕ Circle</button>
+                    <button id="shape-btn-star" class="small-btn shape-btn" onclick="setSlotShape('star')">⭐ Star</button>
+                </div>
+            </div>
+
+            <div class="option-group">
+                <h3>Adjust Photos</h3>
+                <div id="photo-adjust-group" style="display: none; background: #fff0f3; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                    <strong style="display:block; margin-bottom:10px; font-size: 0.9rem;">Captured Shots (Tap to Swap):</strong>
+                    <div id="photo-tray" class="photo-tray-container"></div>
+                    
+                    <strong style="display:block; margin: 15px 0 10px 0; font-size: 0.9rem;">Position & Rotation:</strong>
+                    <div class="adjust-grid">
+                        <button class="small-btn" onclick="adjustPhoto('zoom', 0.1)">🔍 Zoom In</button>
+                        <button class="small-btn" onclick="adjustPhoto('zoom', -0.1)">🔍 Zoom Out</button>
+                        <button class="small-btn" onclick="adjustPhoto('panY', -5)">⬆️ Pan Up</button>
+                        <button class="small-btn" onclick="adjustPhoto('panY', 5)">⬇️ Pan Down</button>
+                        <button class="small-btn" onclick="adjustPhoto('panX', -5)">⬅️ Pan Left</button>
+                        <button class="small-btn" onclick="adjustPhoto('panX', 5)">➡️ Pan Right</button>
+                        <button class="small-btn" onclick="adjustPhoto('flipH', null)">↔️ Flip H</button>
+                        <button class="small-btn" onclick="adjustPhoto('flipV', null)">↕️ Flip V</button>
+                        <button class="small-btn" onclick="adjustPhoto('rotate', -90)">↺ -90°</button>
+                        <button class="small-btn" onclick="adjustPhoto('rotate', 90)">↻ +90°</button>
+                        <div style="grid-column: span 2; display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                            <label style="font-size: 0.8rem; white-space: nowrap; font-weight: bold;">Angle:</label>
+                            <input type="range" id="custom-rot-slider" min="-180" max="180" value="0" style="flex: 1; cursor: pointer;" oninput="adjustPhoto('setRotate', this.value)">
+                            <input type="number" id="custom-rot-input" value="0" style="width: 60px; padding: 5px; border-radius: 5px; border: 1px solid #ccc;" oninput="adjustPhoto('setRotate', this.value)">
+                        </div>
+                        <button class="small-btn" onclick="adjustPhoto('reset', null)" style="grid-column: span 2; background: transparent; border: 2px solid var(--text-color); color: var(--text-color); margin-top: 5px;">↺ Reset This Photo</button>
+                    </div>
+                    <button class="small-btn" style="background:var(--text-color); color:white; width:100%; margin-top:10px;" onclick="selectPhoto(null)">Done Adjusting</button>
+                </div>
+            </div>
+
+            <div class="option-group" id="margin-preset-group" style="display: none;">
+                <h3>Margin Layouts</h3>
+                <div id="margin-selector-container" class="swatch-container filters"></div>
+            </div>
+
+            <div class="option-group">
+                <h3>Strip Color</h3>
+                <div class="swatch-container">
+                    <button class="color-btn" style="background-color: white;" onclick="setStripColor('white')"></button>
+                    <button class="color-btn" style="background-color: black;" onclick="setStripColor('black')"></button>
+                    <button class="color-btn" style="background-color: #ffb3c6;" onclick="setStripColor('#ffb3c6')"></button>
+                    <button class="color-btn" style="background-color: #a8d5e2;" onclick="setStripColor('#a8d5e2')"></button>
+                    <input type="color" id="custom-color-picker" class="color-picker-input" oninput="setStripColor(this.value)" value="#ffffff">
+                </div>
+            </div>
+
+            <div class="option-group">
+                <h3>Select Frame</h3>
+                <div id="frame-selector-container" class="swatch-container filters"></div>
+            </div>
+
+            <div class="option-group">
+                <h3>Add Stickers</h3>
+                <div id="sticker-selector-container" class="swatch-container filters"></div>
+            </div>
+
+            <div class="option-group">
+                <h3>Filters</h3>
+                <div class="swatch-container filters">
+                    <button class="filter-btn" onclick="applyFilter('none')">Original</button>
+                    <button class="filter-btn" onclick="applyFilter('brightness(1.1) contrast(1.1)')">Bright</button>
+                    <button class="filter-btn" onclick="applyFilter('sepia(100%)')">Sepia</button>
+                    <button class="filter-btn" onclick="applyFilter('sepia(40%) contrast(1.2) brightness(0.9) saturate(1.5)')">Vintage</button>
+                    <button class="filter-btn" onclick="applyFilter('grayscale(100%)')">B&W</button>
+                </div>
+            </div>
+
+            <button class="print-btn" onclick="processFinalWorkflow()">🖨️ Print & Get QR</button>
+        </div>
+    </div>
+
+    <!-- QR SCREEN -->
+    <div id="qr-screen" class="screen layout-3-column">
+        <div id="qr-media-column" class="media-column">
+            <div class="column" id="video-column">
+                <h3>Your Video</h3>
+                <video id="final-video-display" autoplay loop muted playsinline></video>
+            </div>
+            <div class="column">
+                <h3>Your Print</h3>
+                <img id="final-print-display" src="" style="box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-radius: 5px;">
+            </div>
+        </div>
+        <div class="column qr-column">
+            <h2>You're all set!</h2>
+            <p>Scan to download your high-res memories.</p>
+            <img id="qr-code-image" src="" alt="Session QR Code">
+            <button class="print-btn" id="done-btn" onclick="restartBooth()">Touch to Finish (30s)</button>
+        </div>
+    </div>
+
+    <!-- HIDDEN VIDEO AREA -->
+    <div id="hidden-video-area" style="position:absolute; top:-9999px; left:-9999px; opacity:0.01; pointer-events:none;">
+        <div id="animated-strip" class="strip">
+            <div id="animated-frame-bg" class="frame-bg"></div>
+            <div class="photo-cell" id="vid-cell-1"><video class="shot-preview" id="vid-1" autoplay loop muted playsinline></video></div>
+            <div class="photo-cell" id="vid-cell-2"><video class="shot-preview" id="vid-2" autoplay loop muted playsinline></video></div>
+            <div class="photo-cell" id="vid-cell-3"><video class="shot-preview" id="vid-3" autoplay loop muted playsinline></video></div>
+            <div class="photo-cell" id="vid-cell-4"><video class="shot-preview" id="vid-4" autoplay loop muted playsinline></video></div>
+            <div id="animated-frame-overlay" class="frame-overlay"></div>
+        </div>
+    </div>
+
+    <div id="print-area"></div>
+    <script src="/app.js"></script>
+</body>
+</html>

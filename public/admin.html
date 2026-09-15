@@ -30,10 +30,12 @@
         .frame-item.grid-land-type { width: 150px; height: 100px; }
         .frame-item.sticker-type { width: 80px; height: 80px; background-size: contain; background-position: center; background-repeat: no-repeat; }
         .frame-item.has-coords::after { content: "✓ Coords"; position: absolute; bottom: 25px; left: 2px; background: #00c853; color: white; font-size: 0.6rem; padding: 2px 4px; border-radius: 3px;}
+        
         .del-btn { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; cursor: pointer; border: none; padding: 0; z-index: 20;}
         .preview-tabs { display: flex; gap: 10px; margin-bottom: 20px;}
         .preview-tabs button { width: auto; margin: 0; background: #bbb;}
         .preview-tabs button.active { background: #ff4d6d;}
+
         .mock-strip { 
             background: var(--bg); display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-radius: 5px; position: relative;
             padding-top: var(--p-top); padding-bottom: var(--p-bot); padding-left: var(--p-side); padding-right: var(--p-side); gap: var(--gap); overflow: hidden; 
@@ -93,6 +95,7 @@
             .fe-modal-content { flex-direction: column; height: 98vh; }
             .fe-sidebar { flex: 0 0 auto; max-height: 40vh; }
         }
+
         .fe-item-wrapper { position: absolute; border: 2px dashed transparent; cursor: move; }
         .fe-item-wrapper:hover, .fe-item-wrapper.selected { border-color: #ff4d6d; }
         .fe-item-wrapper.slot-type { background: rgba(255, 77, 109, 0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 2rem; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
@@ -114,13 +117,19 @@
         .action-btn { background: #e0e0e0; color: #333; border: none; padding: 8px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; transition: 0.2s;}
         .action-btn:hover { background: #d0d0d0; }
         .action-btn:active { transform: scale(0.95); }
+
+        /* Rearrange move buttons */
+        .move-btn { position: absolute; top: -10px; background: #333; color: white; border-radius: 50%; width: 22px; height: 22px; border: none; cursor: pointer; z-index: 20; padding: 0; font-size: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .move-left { left: -10px; }
+        .move-right { left: 15px; }
+        .del-btn { right: -10px; top: -10px; }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <!-- Event Switcher -->
         <div class="event-bar">
-            <h3>🎪 Current Event Instance</h3>
+            <h3>🗂️ Current Event Instance</h3>
             <select id="eventSelect" onchange="switchEvent(this.value)">
                 <option value="default">default</option>
             </select>
@@ -135,6 +144,7 @@
         </div>
 
         <h2>Global Settings</h2>
+        
         <label>Enabled Layouts</label>
         <div style="display: flex; gap: 15px; margin-top: 8px; margin-bottom: 15px; padding: 10px; background: #eee; border-radius: 5px; flex-wrap: wrap;">
             <label style="margin-top: 0; font-weight: normal; cursor: pointer;"><input type="checkbox" id="enable1x3"> 1x3 Strip</label>
@@ -156,14 +166,37 @@
             <option value="webcam">Webcam Only (Fastest & No Errors)</option>
             <option value="dslr">Webcam Live + Windows DSLR</option>
         </select>
+
         <label>Total Camera Shots Taken</label>
         <input type="number" id="totalShots" min="4" max="20" placeholder="Default is 8">
         
         <label>Photo Capture Timer (seconds)</label>
         <input type="number" id="captureTimer" min="1" max="15" placeholder="Default is 5">
 
-        <label>Global Text Color</label>
-        <input type="color" id="textColor">
+        <label>Theme Preset</label>
+        <select id="themeSelect" onchange="applyThemePreset(this.value)">
+            <option value="pink">Classic Pink</option>
+            <option value="dark">Midnight Dark</option>
+            <option value="ocean">Ocean Blue</option>
+            <option value="sage">Sage Green</option>
+            <option value="monochrome">Sleek Monochrome</option>
+            <option value="custom">Custom Colors</option>
+        </select>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 15px;">
+            <div>
+                <label style="font-size:0.8rem; margin-top:5px;">Text</label>
+                <input type="color" id="textColor" onchange="document.getElementById('themeSelect').value='custom'">
+            </div>
+            <div>
+                <label style="font-size:0.8rem; margin-top:5px;">BG</label>
+                <input type="color" id="bgColor" onchange="document.getElementById('themeSelect').value='custom'">
+            </div>
+            <div>
+                <label style="font-size:0.8rem; margin-top:5px;">Accent</label>
+                <input type="color" id="accentColor" onchange="document.getElementById('themeSelect').value='custom'">
+            </div>
+        </div>
 
         <label>Upload Site Background (JPG/PNG)</label>
         <div class="upload-row">
@@ -175,7 +208,7 @@
 
         <button onclick="saveSettings()">Save Configuration</button>
 
-        <h2 style="margin-top: 30px;">🎨 Stickers</h2>
+        <h2 style="margin-top: 30px;">⭐ Stickers</h2>
         <label>Upload Transparent PNG Stickers</label>
         <div class="upload-row">
             <input type="file" id="file-stickers" accept="image/png">
@@ -189,7 +222,6 @@
             <button onclick="clearMockFrame('3x_grid')" style="background:#999; margin-top:0;">Clear Preview</button>
         </div>
         <div id="list-frames3x_grid" class="frame-list" style="margin-bottom:15px;"></div>
-
         <div id="presets-3x_grid" style="margin-bottom: 10px; display:flex; gap: 5px; flex-wrap: wrap;"></div>
         <div class="upload-row" style="margin-bottom: 15px;">
             <input type="text" id="presetName3x_grid" placeholder="Save as preset (Name)">
@@ -212,6 +244,7 @@
             <input type="text" id="presetName1x3" placeholder="Save as margin preset (Name)">
             <button onclick="savePreset('1x3')" style="margin-top: 0;">Save Margin Preset</button>
         </div>
+
         <label>Top Margin (px)</label><input type="number" id="top1x3" onfocus="switchPreview('1x3')" oninput="updateLivePreview('1x3')">
         <label>Bottom Margin (px)</label><input type="number" id="bot1x3" onfocus="switchPreview('1x3')" oninput="updateLivePreview('1x3')">
         <label>Side Margins (px)</label><input type="number" id="side1x3" onfocus="switchPreview('1x3')" oninput="updateLivePreview('1x3')">
@@ -328,14 +361,15 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
                         <button class="action-btn" onclick="feDistribute('vertical')">↕ Vertically</button>
                         <button class="action-btn" onclick="feDistribute('horizontal')">↔ Horizontally</button>
-                        <button class="action-btn" onclick="feAutoAlign()" style="grid-column: span 2;">▦ Tidy Up (Auto-Grid)</button>
-                        <button class="action-btn" onclick="feAutoDetect()" style="grid-column: span 2; background: #00c853; color: white; border: none;">🎯 Auto-Detect Holes (Top Layer)</button>
+                        <button class="action-btn" onclick="feAutoAlign()" style="grid-column: span 2;">🪄 Tidy Up (Auto-Grid)</button>
+                        <button class="action-btn" onclick="feAutoDetect()" style="grid-column: span 2; background: #00c853; color: white; border: none;">🔍 Auto-Detect Holes (Top Layer)</button>
                     </div>
                     
                     <label style="font-size: 0.85rem; margin-top:10px; display:flex; align-items:center; gap:5px; cursor: pointer;">
                         <input type="checkbox" id="fe-snap-toggle" checked onchange="toggleFeGrid()"> Snap to Grid (5%)
                     </label>
                 </div>
+
                 <p style="font-size:0.75rem; color:#888; margin:5px 0;">* Drag boxes on canvas to update inputs.</p>
                 
                 <div id="fe-slots-list" style="max-height: 150px; overflow-y:auto; padding-right:5px;"></div>
@@ -418,10 +452,25 @@
             });
         }
 
+        function applyThemePreset(theme) {
+            const presets = {
+                pink: { text: '#ff4d6d', bg: '#fff0f3', accent: '#ffe6ea' },
+                dark: { text: '#ffffff', bg: '#1a1a1a', accent: '#333333' },
+                ocean: { text: '#0077b6', bg: '#caf0f8', accent: '#ade8f4' },
+                sage: { text: '#2d6a4f', bg: '#d8f3dc', accent: '#b7e4c7' },
+                monochrome: { text: '#222222', bg: '#f8f9fa', accent: '#e9ecef' }
+            };
+            if (presets[theme]) {
+                document.getElementById('textColor').value = presets[theme].text;
+                document.getElementById('bgColor').value = presets[theme].bg;
+                document.getElementById('accentColor').value = presets[theme].accent;
+            }
+        }
+
         async function loadEventSettings(eventCode) {
             const res = await fetch(`/api/${eventCode}/settings`);
             let data = await res.json();
-
+            
             data.frames1x3 = migrateLegacyFrames(data.frames1x3);
             data.frames1x4 = migrateLegacyFrames(data.frames1x4);
             data.frames2x2 = migrateLegacyFrames(data.frames2x2);
@@ -429,7 +478,7 @@
             delete data.frameCoords; 
 
             settings = data;
-
+            
             if(!settings.marginPresets) settings.marginPresets = { '1x3': [], '1x4': [], '2x2': [], '3x_grid': [] };
             if(!settings.marginPresets['3x_grid']) settings.marginPresets['3x_grid'] = [];
             
@@ -441,10 +490,19 @@
             if(!settings.stickers) settings.stickers = [];
             
             document.getElementById('cameraMode').value = settings.cameraMode || 'webcam';
+            document.getElementById('themeSelect').value = settings.theme || 'pink';
             document.getElementById('textColor').value = settings.textColor || '#ff4d6d';
+            document.getElementById('bgColor').value = settings.bgColor || '#fff0f3';
+            document.getElementById('accentColor').value = settings.accentColor || '#ffe6ea';
             document.getElementById('totalShots').value = settings.totalShots || 8;
             document.getElementById('captureTimer').value = settings.captureTimer || 5;
-            
+
+            // Apply immediately to the admin UI
+            document.documentElement.style.setProperty('--text-color', settings.textColor || '#ff4d6d');
+            document.documentElement.style.setProperty('--bg-color', settings.bgColor || '#fff0f3');
+            document.documentElement.style.setProperty('--accent-color', settings.accentColor || '#ffe6ea');
+            document.body.style.backgroundColor = settings.bgColor || '#f4f4f4';
+
             document.getElementById('enable1x3').checked = settings.enable1x3 === true;
             document.getElementById('enable1x4').checked = settings.enable1x4 !== false;
             document.getElementById('enable2x2').checked = settings.enable2x2 === true;
@@ -470,6 +528,7 @@
             }
 
             updateLivePreview('1x4');
+
             renderFrames();
             renderPresets('3x_grid'); renderPresets('1x3'); renderPresets('1x4'); renderPresets('2x2');
         }
@@ -502,6 +561,7 @@
             const container = document.getElementById(`presets-${mode}`);
             if(!container) return; container.innerHTML = '';
             if(!settings.marginPresets[mode]) settings.marginPresets[mode] = [];
+
             settings.marginPresets[mode].forEach((p, i) => {
                 const badge = document.createElement('div');
                 badge.style = "background: #ddd; padding: 5px 10px; border-radius: 15px; display:flex; gap:5px; align-items:center; font-size: 0.8rem; cursor: pointer;";
@@ -524,12 +584,12 @@
 
             settings.marginPresets[mode].push({ name, top, bot, side, gap });
             document.getElementById(`presetName${mode}`).value = '';
-            saveSettings(); renderPresets(mode);
+            saveSettings(true); renderPresets(mode);
         }
 
         function deletePreset(mode, index) { 
             settings.marginPresets[mode].splice(index, 1); 
-            saveSettings(); 
+            saveSettings(true); 
             renderPresets(mode); 
         }
 
@@ -539,7 +599,7 @@
             switchPreview(mode);
         }
 
-        function saveSettings() {
+        function saveSettings(silent = false) {
             settings.cameraMode = document.getElementById('cameraMode').value;
             settings.enable1x3 = document.getElementById('enable1x3').checked;
             settings.enable1x4 = document.getElementById('enable1x4').checked;
@@ -547,7 +607,10 @@
             settings.enable3x_grid = document.getElementById('enable3x_grid').checked;
             
             settings.defaultCameraId = document.getElementById('defaultCameraId').value;
+            settings.theme = document.getElementById('themeSelect').value;
+            settings.accentColor = document.getElementById('accentColor').value;
             settings.textColor = document.getElementById('textColor').value;
+            settings.bgColor = document.getElementById('bgColor').value;
             settings.totalShots = parseInt(document.getElementById('totalShots').value) || 8;
             settings.captureTimer = parseInt(document.getElementById('captureTimer').value) || 5;
             
@@ -560,15 +623,25 @@
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify(settings) 
-            }).then(() => alert(`Settings saved for event: ${currentEvent}!`));
+            }).then(() => {
+                if(!silent) alert(`Settings saved for event: ${currentEvent}!`);
+                
+                // Instantly apply colors to admin interface
+                document.documentElement.style.setProperty('--text-color', settings.textColor);
+                document.documentElement.style.setProperty('--bg-color', settings.bgColor);
+                document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+                document.body.style.backgroundColor = settings.bgColor;
+            });
         }
 
         async function uploadAppAsset(type) {
             const fileInput = document.getElementById(`file-${type}`);
             if (!fileInput.files[0]) return;
+
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('assetType', type);
+
             const res = await fetch(`/api/${currentEvent}/upload-asset`, { method: 'POST', body: formData });
             const data = await res.json();
             
@@ -576,15 +649,25 @@
                 if (type === 'bgImage') {
                     settings.bgImage = data.url; document.getElementById('main-editor-bg').style.backgroundImage = `url("${data.url}")`;
                     document.getElementById('bg-status').style.display = 'block'; setTimeout(() => document.getElementById('bg-status').style.display = 'none', 2000);
-                    saveSettings();
+                    saveSettings(true);
                 } else if (type === 'stickers') {
-                    settings.stickers.push(data.url); saveSettings(); renderFrames();
+                    settings.stickers.push(data.url); saveSettings(true); renderFrames();
                 } 
             }
         }
 
-        function clearBg() { settings.bgImage = ""; document.getElementById('main-editor-bg').style.backgroundImage = "none"; saveSettings(); }
-        function deleteFrame(type, index) { settings[type].splice(index, 1); saveSettings(); renderFrames(); }
+        function clearBg() { settings.bgImage = ""; document.getElementById('main-editor-bg').style.backgroundImage = "none"; saveSettings(true); }
+
+        function deleteFrame(type, index) { settings[type].splice(index, 1); saveSettings(true); renderFrames(); }
+
+        function moveFrame(type, index, direction) {
+            if (index + direction < 0 || index + direction >= settings[type].length) return;
+            const temp = settings[type][index];
+            settings[type][index] = settings[type][index + direction];
+            settings[type][index + direction] = temp;
+            saveSettings(true); 
+            renderFrames();     
+        }
 
         function clearMockFrame(mode) {
             const strip = document.getElementById(`mock-${mode}`);
@@ -614,6 +697,7 @@
                     else ovCon.appendChild(img);
                 });
             }
+
             const count = mode === '1x3' ? 3 : (mode === '3x_grid' ? 3 : 4);
             if (frameObj.coords && frameObj.coords.length > 0) {
                 strip.classList.add('absolute-mode');
@@ -638,6 +722,7 @@
             const renderList = (type, mode, isSticker) => {
                 const container = document.getElementById(`list-${type}`); container.innerHTML = '';
                 if(!settings[type]) return;
+
                 settings[type].forEach((obj, i) => {
                     const div = document.createElement('div');
                     let displayClass = '';
@@ -658,15 +743,32 @@
                     if (!isSticker) {
                         if (obj.coords && obj.coords.length > 0) { div.classList.add('has-coords'); }
                         div.onclick = () => applyMockFrame(obj, mode);
+
                         const editBtn = document.createElement('button');
-                        editBtn.innerText = '✎'; editBtn.style = "position:absolute; bottom:5px; right:5px; background:white; border-radius:50%; width:24px; height:24px; padding:0; border:none; cursor:pointer; z-index:20;";
+                        editBtn.innerText = '⚙️'; editBtn.style = "position:absolute; bottom:5px; right:5px; background:white; border-radius:50%; width:24px; height:24px; padding:0; border:none; cursor:pointer; z-index:20;";
                         editBtn.onclick = (e) => { e.stopPropagation(); openFrameEditor(mode, i); }
                         div.appendChild(editBtn);
                     }
                     
                     const btn = document.createElement('button'); btn.className = 'del-btn'; btn.innerText = '✕';
                     btn.onclick = (e) => { e.stopPropagation(); deleteFrame(type, i); }
-                    div.appendChild(btn); container.appendChild(div);
+                    div.appendChild(btn); 
+                    container.appendChild(div);
+
+                    if (!isSticker) {
+                        if (i > 0) {
+                            const moveLeft = document.createElement('button');
+                            moveLeft.className = 'move-btn move-left'; moveLeft.innerHTML = '◄';
+                            moveLeft.onclick = (e) => { e.stopPropagation(); moveFrame(type, i, -1); };
+                            div.appendChild(moveLeft);
+                        }
+                        if (i < settings[type].length - 1) {
+                            const moveRight = document.createElement('button');
+                            moveRight.className = 'move-btn move-right'; moveRight.innerHTML = '►';
+                            moveRight.onclick = (e) => { e.stopPropagation(); moveFrame(type, i, 1); };
+                            div.appendChild(moveRight);
+                        }
+                    }
                 });
             };
             renderList('frames3x_grid', '3x_grid', false);
@@ -726,11 +828,14 @@
         async function feAddImageLayer() {
             const fileInput = document.getElementById(`fe-image-file`);
             if (!fileInput.files[0]) return;
+
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             formData.append('assetType', 'frame_layer');
+
             const res = await fetch(`/api/${currentEvent}/upload-asset`, { method: 'POST', body: formData });
             const data = await res.json();
+            
             if(data.success) {
                 feLayers.push({ id: 'L' + Date.now(), url: data.url, type: 'overlay', x: 0, y: 0, w: 100, h: 100, r: 0 });
                 renderFeWorkspace();
@@ -929,6 +1034,7 @@
             
             const resBtn = document.createElement('div'); resBtn.className = 'fe-handle-resize';
             const rotBtn = document.createElement('div'); rotBtn.className = 'fe-handle-rotate';
+
             box.appendChild(delBtn); box.appendChild(resBtn); box.appendChild(rotBtn);
             
             makeItemInteractive(box, item.id, resBtn, rotBtn);
@@ -1035,11 +1141,12 @@
             
             let arr = settings['frames' + feCurrentLayout];
             if(!arr) arr = [];
+
             if(feEditIndex > -1) arr[feEditIndex] = frameObj;
             else arr.push(frameObj);
             
             settings['frames' + feCurrentLayout] = arr;
-            saveSettings(); feClose(); renderFrames();
+            saveSettings(true); feClose(); renderFrames();
         }
 
         async function detectAdminCameras() {
@@ -1062,6 +1169,7 @@
                 if (settings.defaultCameraId && !settings.defaultCameraId.includes('HTMLSelectElement')) {
                     adminCamSelect.value = settings.defaultCameraId;
                 }
+
             } catch (err) {
                 alert("Camera access blocked! Please click the lock icon in your browser's address bar and allow Camera access.");
             }

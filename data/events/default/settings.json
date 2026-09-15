@@ -5,8 +5,8 @@
   "enable2x2": false,
   "enable3x_grid": true,
   "defaultCameraId": "e64e9201425db9213484b8408c8774a97a712789304ce3857236c52c10e4784d",
-  "textColor": "#bd6e00",
-  "bgImage": "/events/default/assets/bgImage_1788888442946.png",
+  "textColor": "#ff7300",
+  "bgImage": "/events/default/assets/bgImage_1789508040005.png",
   "totalShots": 8,
   "captureTimer": 3,
   "frames1x3": [
@@ -374,5 +374,8 @@
     "paddingBottom": "60",
     "paddingSide": "20",
     "gap": "15"
-  }
+  },
+  "bgColor": "#f7eecf",
+  "theme": "custom",
+  "accentColor": "#f7ca7e"
 }

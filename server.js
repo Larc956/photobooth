@@ -27,6 +27,7 @@ app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
 const BASE_DATA_DIR = path.join(__dirname, 'data', 'events');
 const TEMP_DIR = path.join(__dirname, 'temp');
+
 if (!existsSync(BASE_DATA_DIR)) mkdirSync(BASE_DATA_DIR, { recursive: true });
 if (!existsSync(TEMP_DIR)) mkdirSync(TEMP_DIR, { recursive: true });
 
@@ -42,6 +43,9 @@ const defaultSettings = {
     enable2x2: false,
     enable3x_grid: true,
     defaultCameraId: "",
+    theme: "pink",
+    bgColor: "#fff0f3",
+    accentColor: "#ffe6ea",
     textColor: "#ff4d6d",
     bgImage: "",
     totalShots: 8,
@@ -77,10 +81,10 @@ async function ensureEventDirs(eventCode) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     if (!existsSync(assetsDir)) mkdirSync(assetsDir, { recursive: true });
     if (!existsSync(galleriesDir)) mkdirSync(galleriesDir, { recursive: true });
-
     if (!existsSync(settingsFile)) {
         await fs.writeFile(settingsFile, JSON.stringify(defaultSettings, null, 2));
     }
+
     return { dir, assetsDir, galleriesDir, settingsFile };
 }
 
@@ -219,6 +223,7 @@ app.post('/api/:eventCode/upload', upload.fields([
                 const rawFilename = `raw_photo_${i + 1}.jpg`;
                 const rawPath = path.join(galleryDir, rawFilename);
                 await moveFile(req.files[`rawPhoto${i}`][0].path, rawPath);
+                
                 const rawBuf = await fs.readFile(rawPath);
                 await uploadToCloud(`events/${eventCode}/galleries/${sessionFolder}/${rawFilename}`, rawBuf, 'image/jpeg');
 
@@ -235,6 +240,7 @@ app.post('/api/:eventCode/upload', upload.fields([
             videoFilename = req.files['btsVideo'][0].originalname || 'animated_strip.mp4';
             const vidPath = path.join(galleryDir, videoFilename);
             await moveFile(req.files['btsVideo'][0].path, vidPath);
+            
             const vidBuf = await fs.readFile(vidPath);
             await uploadToCloud(`events/${eventCode}/galleries/${sessionFolder}/${videoFilename}`, vidBuf, req.files['btsVideo'][0].mimetype || 'video/mp4');
         }
@@ -282,17 +288,13 @@ app.post('/api/:eventCode/upload', upload.fields([
     </div>
 </body>
 </html>`;
-
         await fs.writeFile(path.join(galleryDir, 'index.html'), htmlTemplate);
         
-        // ADDED: Uploads the HTML template directly to your Cloudflare R2 Bucket
         await uploadToCloud(`events/${eventCode}/galleries/${sessionFolder}/index.html`, Buffer.from(htmlTemplate, 'utf8'), 'text/html');
 
-        // Default to the Render/Local URL
         const baseUrl = process.env.PUBLIC_URL || globalTunnelUrl || `http://${getLocalIp()}:${PORT}`;
         let galleryUrl = `${baseUrl.replace(/\/$/, '')}/events/${eventCode}/galleries/${sessionFolder}/index.html`;
 
-        // OVERRIDE: If R2 is active, force the QR code to point directly to permanent Cloudflare storage
         if (process.env.R2_PUBLIC_DOMAIN) {
             galleryUrl = `https://${process.env.R2_PUBLIC_DOMAIN.replace(/\/$/, '')}/events/${eventCode}/galleries/${sessionFolder}/index.html`;
         }
@@ -302,7 +304,6 @@ app.post('/api/:eventCode/upload', upload.fields([
         catch (qrErr) { qrCodeDataUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='; }
 
         res.json({ success: true, qrCodeUrl: qrCodeDataUrl, galleryUrl });
-
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -313,6 +314,7 @@ app.get('/api/:eventCode/sessions', async (req, res) => {
     try {
         const { galleriesDir } = await ensureEventDirs(eventCode);
         if (!existsSync(galleriesDir)) return res.json({ success: true, sessions: [] });
+
         const dirs = await fs.readdir(galleriesDir);
         const sessions = [];
 
@@ -341,10 +343,8 @@ app.get('/api/:eventCode/sessions', async (req, res) => {
                 }
             }
         }
-
         sessions.sort((a, b) => b.id.localeCompare(a.id));
         res.json({ success: true, sessions });
-
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -361,10 +361,12 @@ async function deleteFromCloud(prefix) {
                 secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
             },
         });
+
         const listRes = await client.send(new ListObjectsV2Command({
             Bucket: process.env.R2_BUCKET_NAME,
             Prefix: prefix
         }));
+
         if (listRes.Contents && listRes.Contents.length > 0) {
             await client.send(new DeleteObjectsCommand({
                 Bucket: process.env.R2_BUCKET_NAME,
@@ -383,13 +385,10 @@ app.delete('/api/:eventCode/sessions/:sessionId', async (req, res) => {
     const sessionDir = path.join(galleriesDir, sessionId);
 
     try {
-        // Delete local folder
         if (existsSync(sessionDir)) {
             await fs.rm(sessionDir, { recursive: true, force: true });
         }
-        // Delete cloud files
         await deleteFromCloud(`events/${eventCode}/galleries/${sessionId}/`);
-
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -400,6 +399,7 @@ app.post('/api/capture-dslr', async (req, res) => {
     const filename = `dslr_${Date.now()}.jpg`;
     const targetPath = path.join(TEMP_DIR, filename);
     const cmd = `"C:\\Program Files (x86)\\digiCamControl\\CameraControlCmd.exe" /capture /filename "${targetPath}"`;
+
     exec(cmd, async (error) => {
         try {
             const stats = await fs.stat(targetPath);
@@ -410,10 +410,6 @@ app.post('/api/capture-dslr', async (req, res) => {
 });
 
 app.use('/temp', express.static(TEMP_DIR));
-
-// ==========================================
-// Event-Aware Frontend Routing (Fixed for Express 5)
-// ==========================================
 
 app.get('/e/:eventCode/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/e/:eventCode/gallery', (req, res) => res.sendFile(path.join(__dirname, 'public', 'gallery.html')));
@@ -427,15 +423,13 @@ const frontendRoutes = [
     '/e/:eventCode/edit',
     '/e/:eventCode/qr'
 ];
+
 app.get(frontendRoutes, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.get('/admin', (req, res) => res.redirect('/e/default/admin'));
 app.get('/gallery', (req, res) => res.redirect('/e/default/gallery'));
 app.get(['/', '/start', '/layout', '/preframe', '/photo', '/edit', '/qr'], (req, res) => res.redirect('/e/default'));
 
-// ==========================================
-// START SERVER
-// ==========================================
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`===================================================`);
     console.log(`  Photobooth running on port: ${PORT}`);

@@ -33,7 +33,6 @@ function getEventCode() {
     if (parts[0] === 'e' && parts[1]) return parts[1].toLowerCase();
     return localStorage.getItem('photobooth_event_code') || 'default';
 }
-
 const currentEventCode = getEventCode();
 localStorage.setItem('photobooth_event_code', currentEventCode);
 
@@ -42,7 +41,6 @@ function getApiPath(endpoint) {
 }
 
 window.addEventListener('popstate', handleRoute);
-
 function navigateTo(path) {
     window.history.pushState({}, '', `/e/${currentEventCode}${path}`);
     handleRoute();
@@ -87,6 +85,10 @@ window.onload = async () => {
         appSettings = data;
         const root = document.documentElement;
         root.style.setProperty('--text-color', appSettings.textColor || '#ff4d6d');
+        root.style.setProperty('--bg-color', appSettings.bgColor || '#fff0f3');
+        root.style.setProperty('--accent-color', appSettings.accentColor || '#ffe6ea');
+        document.body.style.backgroundColor = appSettings.bgColor || '#fff0f3';
+
         if (appSettings.bgImage) {
             document.body.style.backgroundImage = `url("${appSettings.bgImage}")`;
             document.body.style.backgroundSize = 'cover';
@@ -97,6 +99,7 @@ window.onload = async () => {
         if (appSettings.enable1x4 !== false) enabledLayouts.push('1x4'); 
         if (appSettings.enable2x2) enabledLayouts.push('2x2');
         if (appSettings.enable3x_grid) enabledLayouts.push('3x_grid');
+
         if (enabledLayouts.length === 0) enabledLayouts.push('1x4');
 
         const card1x3 = document.getElementById('layout-card-1x3');
@@ -131,22 +134,26 @@ window.onload = async () => {
                     photos = session.rawPhotos; 
                     shotsRequired = photos.length;
                     userLayout = editLayout || (shotsRequired === 3 ? '1x3' : '1x4');
+
                     document.getElementById('loading-overlay').classList.add('hidden');
                     setTimeout(() => { proceedToEdit(); }, 400);
                     return;
                 }
             } catch (e) { console.error("Session load error:", e); }
         }
+
     } catch (e) { console.error("Settings load error:", e); }
 
     const cameraSelect = document.getElementById('camera-select');
     try {
         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
         tempStream.getTracks().forEach(track => track.stop());
+
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(d => d.kind === 'videoinput');
         
         let targetDeviceId = appSettings.defaultCameraId || "";
+
         if (!targetDeviceId) {
             const canonOrCapture = videoDevices.find(d => 
                 d.label.includes('EOS Webcam') || d.label.includes('USB Video') || d.label.includes('Capture')
@@ -163,7 +170,7 @@ window.onload = async () => {
     } catch (err) {
         if (cameraSelect) cameraSelect.innerHTML = '<option value="">Default Web Camera</option>';
     }
-};
+}
 
 function selectLayout(layoutChoice) {
     userLayout = layoutChoice;
@@ -183,7 +190,6 @@ function setCaptureMode(mode) {
 function buildPreframeSelector() {
     const container = document.getElementById('preframe-options-container');
     container.innerHTML = '';
-
     const framesArray = appSettings['frames' + userLayout] || [];
 
     const noFrameCard = document.createElement('div');
@@ -277,10 +283,12 @@ async function startCamera() {
             video: selectedCameraId ? { deviceId: { exact: selectedCameraId }, width: { ideal: 1920 }, height: { ideal: 1080 } } : { width: { ideal: 1920 }, height: { ideal: 1080 } },
             audio: false
         };
+
         try { stream = await navigator.mediaDevices.getUserMedia(constraints); } 
         catch { stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false }); }
         
         video.srcObject = stream;
+
         currentShotIndex = 0; 
         photos = []; 
         videoBlobs = []; 
@@ -297,6 +305,7 @@ async function startCamera() {
             document.getElementById('timer-display').classList.add('hidden');
             document.getElementById('manual-capture-btn').classList.remove('hidden');
         }
+
     } catch (err) { alert(`Cannot access camera: ${err.message}`); }
 }
 
@@ -357,12 +366,14 @@ async function takePhoto() {
     }
 
     document.getElementById('total-shots-counter').innerText = "Processing...";
+
     if (appSettings.cameraMode === 'dslr') {
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 6000);
             const response = await fetch('/api/capture-dslr', { method: 'POST', signal: controller.signal });
             clearTimeout(timeoutId);
+
             const data = await response.json();
             if (data.success && data.imageUrl) {
                 photos.push(data.imageUrl);
@@ -382,6 +393,7 @@ async function takePhoto() {
 
     setTimeout(() => {
         previewOverlay.classList.add('hidden');
+
         if (currentShotIndex < totalShots) {
             shotCounter.innerText = currentShotIndex + 1;
             document.getElementById('total-shots-counter').innerText = totalShots;
@@ -439,6 +451,7 @@ function proceedToEdit() {
 
     previewStrip.className = 'strip';
     animatedStrip.className = 'strip';
+
     if (userLayout === '1x3') {
         document.getElementById('cell-4').style.display = 'none';
         document.getElementById('vid-cell-4').style.display = 'none';
@@ -453,10 +466,12 @@ function proceedToEdit() {
     }
 
     document.querySelectorAll('.sticker-wrapper').forEach(el => el.remove());
+
     applyPhotoAdjustmentsUI();
     loadFrameOptions(); 
     loadStickers();
     selectPhoto(0);
+
     applyFrame(activeFrameObj); 
     navigateTo('/edit');
 }
@@ -464,6 +479,7 @@ function proceedToEdit() {
 function buildPhotoTray() {
     const tray = document.getElementById('photo-tray');
     tray.innerHTML = '';
+    
     photos.forEach((p, rawIndex) => {
         const img = document.createElement('img');
         img.src = p;
@@ -479,6 +495,7 @@ function buildPhotoTray() {
                     vidEl.src = URL.createObjectURL(videoBlobs[rawIndex]);
                     vidEl.play().catch(() => {});
                 }
+
                 document.querySelectorAll('.tray-photo').forEach((el, i) => {
                     if (selectedPhotos.includes(i)) el.classList.add('in-use');
                     else el.classList.remove('in-use');
@@ -496,10 +513,12 @@ function loadMarginPresets() {
     container.innerHTML = '';
 
     let presets = appSettings.marginPresets ? appSettings.marginPresets[userLayout] : null;
+    
     if (!presets || presets.length === 0) {
         const fallback = appSettings[`layout${userLayout}`] || { paddingTop: 20, paddingBottom: 60, paddingSide: 20, gap: 15 };
         presets = [{ name: 'Default', top: fallback.paddingTop, bot: fallback.paddingBottom, side: fallback.paddingSide, gap: fallback.gap }];
     }
+
     presets.forEach((preset, index) => {
         const btn = document.createElement('button');
         btn.className = 'filter-btn margin-option-btn';
@@ -512,6 +531,7 @@ function loadMarginPresets() {
         container.appendChild(btn);
         if (index === 0) btn.click();
     });
+
     group.style.display = presets.length > 0 ? 'block' : 'none';
 }
 
@@ -544,6 +564,7 @@ function selectPhoto(index) {
         const currentShape = photoAdjustments[index].shape || 'basic';
         const shapeBtn = document.getElementById(`shape-btn-${currentShape}`);
         if (shapeBtn) shapeBtn.classList.add('active');
+
     } else {
         document.getElementById('photo-adjust-group').style.display = 'none';
     }
@@ -577,6 +598,7 @@ function adjustPhoto(action, value) {
 
     document.getElementById('custom-rot-slider').value = adj.rotate;
     document.getElementById('custom-rot-input').value = adj.rotate;
+
     applyPhotoAdjustmentsUI();
 }
 
@@ -616,15 +638,18 @@ function loadFrameOptions() {
     container.appendChild(noFrameBtn);
 
     const framesArray = appSettings['frames' + userLayout] || [];
+    
     if (framesArray && framesArray.length > 0) {
         framesArray.forEach((frameObj) => {
             const btn = document.createElement('button');
             btn.className = 'frame-option-btn';
+            
             let thumbUrl = '';
             if (frameObj.layers && frameObj.layers.length > 0) {
                 let topLayer = frameObj.layers.find(l => l.type === 'overlay') || frameObj.layers[0];
                 thumbUrl = topLayer.url;
             }
+            
             btn.style.backgroundImage = `url("${thumbUrl}")`;
             btn.style.backgroundSize = 'contain';
             btn.style.backgroundPosition = 'center';
@@ -647,6 +672,7 @@ function loadFrameOptions() {
 function loadStickers() {
     const container = document.getElementById('sticker-selector-container');
     container.innerHTML = '';
+
     if (appSettings.stickers && appSettings.stickers.length > 0) {
         appSettings.stickers.forEach(url => {
             const btn = document.createElement('button');
@@ -671,8 +697,8 @@ function addSticker(url) {
     const img = document.createElement('img');
     img.src = url;
     img.className = 'sticker-img';
-
     wrapper.appendChild(img);
+
     document.getElementById('strip-preview').appendChild(wrapper);
     makeDraggableAndResizable(wrapper);
 }
@@ -680,9 +706,9 @@ function addSticker(url) {
 function makeDraggableAndResizable(el) {
     let isDragging = false, isResizing = false, isRotating = false;
     let startX, startY, startW, startLeft, startTop, startAngle = 0;
-
     const imgEl = el.querySelector('.sticker-img');
     let currentRotation = parseFloat(imgEl.getAttribute('data-rotation')) || 0;
+
     const deleteBtn = document.createElement('div');
     deleteBtn.className = 'sticker-delete';
     deleteBtn.innerHTML = '✕';
@@ -698,9 +724,11 @@ function makeDraggableAndResizable(el) {
     el.appendChild(rotateHandle);
 
     let centerX, centerY;
+
     el.addEventListener('pointerdown', (e) => {
         if (e.target === deleteBtn) return;
         e.preventDefault();
+
         startX = e.clientX; startY = e.clientY;
         startLeft = el.offsetLeft; startTop = el.offsetTop;
         startW = el.offsetWidth;
@@ -749,6 +777,7 @@ function buildLayersInDOM(containerId, layersArray) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
     if (!layersArray) return;
+    
     layersArray.forEach(l => {
         let img = document.createElement('img');
         img.src = l.url;
@@ -760,19 +789,21 @@ function buildLayersInDOM(containerId, layersArray) {
 function applyFrame(frameObj) {
     activeFrameObj = frameObj;
     const shapeGroup = document.getElementById('frame-shape-group');
+
     if (frameObj === 'none' || !frameObj) {
         document.getElementById('static-frame-bg').innerHTML = '';
         document.getElementById('animated-frame-bg').innerHTML = '';
         
-        // ADDED: Clear the overlays too
         document.getElementById('static-frame-overlay').innerHTML = '';
         document.getElementById('animated-frame-overlay').innerHTML = '';
 
         setStripColor(currentStripColor);
+
         previewStrip.classList.remove('absolute-mode');
         animatedStrip.classList.remove('absolute-mode');
         
         if (shapeGroup) shapeGroup.style.display = 'block';
+
         for (let i = 1; i <= 4; i++) {
             let p1 = document.getElementById(`cell-${i}`);
             let v1 = document.getElementById(`vid-cell-${i}`);
@@ -780,12 +811,13 @@ function applyFrame(frameObj) {
             v1.style.left = ''; v1.style.top = ''; v1.style.width = ''; v1.style.height = ''; v1.style.transform = '';
             p1.removeAttribute('data-cell-rot'); p1.removeAttribute('data-cell-x'); p1.removeAttribute('data-cell-y'); p1.removeAttribute('data-cell-w'); p1.removeAttribute('data-cell-h');
         }
+
     } else {
         if (shapeGroup) shapeGroup.style.display = 'none';
+        
         photoAdjustments.forEach(adj => adj.shape = 'basic');
         applyPhotoAdjustmentsUI();
 
-        // CHANGED: Filter layers and route them to the correct background or overlay DOM elements
         const bgLayers = frameObj.layers.filter(l => l.type === 'bg');
         const overlayLayers = frameObj.layers.filter(l => l.type === 'overlay');
 
@@ -796,9 +828,11 @@ function applyFrame(frameObj) {
         buildLayersInDOM('animated-frame-overlay', overlayLayers);
 
         setStripColor(currentStripColor);
+
         if (frameObj.coords && frameObj.coords.length > 0) {
             previewStrip.classList.add('absolute-mode');
             animatedStrip.classList.add('absolute-mode');
+
             const coords = frameObj.coords;
             for (let i = 0; i < shotsRequired; i++) {
                 const p1 = document.getElementById(`cell-${i+1}`);
@@ -807,15 +841,18 @@ function applyFrame(frameObj) {
                     p1.style.display = 'none'; v1.style.display = 'none';
                     continue;
                 }
+                
                 p1.style.display = 'block'; v1.style.display = 'block';
                 p1.style.left = `${coords[i].x}%`; p1.style.top = `${coords[i].y}%`; 
                 p1.style.width = `${coords[i].w}%`; p1.style.height = `${coords[i].h}%`;
+                
                 v1.style.left = `${coords[i].x}%`; v1.style.top = `${coords[i].y}%`; 
                 v1.style.width = `${coords[i].w}%`; v1.style.height = `${coords[i].h}%`;
                 
                 let rot = coords[i].r || 0;
                 p1.style.transform = `rotate(${rot}deg)`;
                 v1.style.transform = `rotate(${rot}deg)`;
+
                 p1.setAttribute('data-cell-rot', rot);
                 p1.setAttribute('data-cell-x', coords[i].x);
                 p1.setAttribute('data-cell-y', coords[i].y);
@@ -879,6 +916,7 @@ async function drawStickersToCanvas(ctx, scaleX, scaleY, stripRect) {
     for (let st of stickers) {
         const imgEl = st.querySelector('img');
         const rect = st.getBoundingClientRect();
+        
         const x = (rect.left - stripRect.left) * scaleX;
         const y = (rect.top - stripRect.top) * scaleY;
         const w = rect.width * scaleX;
@@ -909,12 +947,14 @@ async function preloadFrameLayers(frameObj) {
 
 async function generateCompositeImage() {
     selectPhoto(null);
+
     const stripEl = document.getElementById('strip-preview');
     const canvas = document.createElement('canvas');
+    
     if (userLayout === '3x_grid') { canvas.width = 1800; canvas.height = 1200; }
     else if (userLayout === '2x2') { canvas.width = 1200; canvas.height = 1800; }
     else { canvas.width = 600; canvas.height = 1800; }
-
+    
     const ctx = canvas.getContext('2d');
     const scaleX = canvas.width / stripEl.offsetWidth;
     const scaleY = canvas.height / stripEl.offsetHeight;
@@ -975,6 +1015,7 @@ async function generateCompositeImage() {
         offCtx.drawImage(rawImg, 0, 0);
 
         const htmlImg = offCanvas;
+
         let imgAspect = htmlImg.width / htmlImg.height;
         let cellAspect = w / h;
         let drawW, drawH, drawX, drawY;
@@ -1003,11 +1044,12 @@ async function generateCompositeImage() {
         ctx.scale(adj.scale, adj.scale);
         ctx.rotate(adj.rotate * Math.PI / 180);
         ctx.scale(adj.flipH ? -1 : 1, adj.flipV ? -1 : 1);
+
         try {
             ctx.drawImage(htmlImg, isRotated ? drawX - h/2 : drawX - w/2, isRotated ? drawY - w/2 : drawY - h/2, isRotated ? drawH : drawW, isRotated ? drawW : drawH);
         } catch (e) {}
+        
         ctx.restore(); 
-
         ctx.filter = 'none';
     }
 
@@ -1020,6 +1062,7 @@ async function generateCompositeImage() {
     });
 
     await drawStickersToCanvas(ctx, scaleX, scaleY, stripRect);
+
     return canvas.toDataURL('image/jpeg', 0.95);
 }
 
@@ -1027,12 +1070,12 @@ function createAnimatedStripVideo() {
     return new Promise(async (resolve) => {
         const stripEl = document.getElementById('animated-strip');
         const printStripEl = document.getElementById('strip-preview'); 
+        
         const canvas = document.createElement('canvas');
-
         if (userLayout === '3x_grid') { canvas.width = 1800; canvas.height = 1200; }
         else if (userLayout === '2x2') { canvas.width = 1200; canvas.height = 1800; }
         else { canvas.width = 600; canvas.height = 1800; }
-
+        
         canvas.style.position = 'fixed'; 
         canvas.style.top = '-9999px';
         canvas.style.opacity = '0.01'; 
@@ -1058,9 +1101,9 @@ function createAnimatedStripVideo() {
 
         const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
         const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        
         const stream = canvas.captureStream(30);
         let recorder;
-
         try { recorder = new MediaRecorder(stream, { mimeType: mimeType }); } 
         catch (e) {
             try { recorder = new MediaRecorder(stream); }
@@ -1086,14 +1129,16 @@ function createAnimatedStripVideo() {
         const stickerData = [];
         const stickerNodes = document.querySelectorAll('#strip-preview .sticker-wrapper');
         const printStripRect = printStripEl.getBoundingClientRect();
-
+        
         stickerNodes.forEach(st => {
             const imgEl = st.querySelector('img');
             const rect = st.getBoundingClientRect();
+            
             const preloadedImg = new Image(); 
             preloadedImg.crossOrigin = "Anonymous";
             preloadedImg.src = imgEl.src;
             const rotation = parseFloat(imgEl.getAttribute('data-rotation')) || 0;
+
             stickerData.push({
                 img: preloadedImg,
                 x: (rect.left - printStripRect.left) * scaleX,
@@ -1109,6 +1154,7 @@ function createAnimatedStripVideo() {
 
         function draw() {
             if (!isRecording) return;
+
             if (stripEl.style.backgroundColor === 'transparent') ctx.clearRect(0, 0, canvas.width, canvas.height);
             else {
                 ctx.fillStyle = stripEl.style.backgroundColor || '#ffffff';
@@ -1129,6 +1175,7 @@ function createAnimatedStripVideo() {
                 const vid = cell.querySelector('.shot-preview');
                 let sourceToDraw = null;
                 let isVideo = false;
+
                 if (vid && vid.readyState >= 2) {
                     sourceToDraw = vid;
                     isVideo = true;
@@ -1139,6 +1186,7 @@ function createAnimatedStripVideo() {
 
                 if (sourceToDraw && cell.style.display !== 'none' && !cell.classList.contains('hidden')) {
                     let x, y, w, h, cellRot = 0;
+                    
                     if (isAbsolute && cell.hasAttribute('data-cell-x')) {
                         w = (parseFloat(cell.getAttribute('data-cell-w')) / 100) * canvas.width;
                         h = (parseFloat(cell.getAttribute('data-cell-h')) / 100) * canvas.height;
@@ -1173,6 +1221,7 @@ function createAnimatedStripVideo() {
 
                     let isRotated = photoAdjustments[i].rotate % 180 !== 0;
                     if (isRotated) imgAspect = imgH / imgW;
+
                     if (imgAspect > cellAspect) {
                         drawH = h; drawW = h * imgAspect;
                         drawX = (w - drawW) / 2; drawY = 0;
@@ -1193,9 +1242,10 @@ function createAnimatedStripVideo() {
                     ctx.scale(adj.scale, adj.scale);
                     ctx.rotate(adj.rotate * Math.PI / 180);
                     ctx.scale(adj.flipH ? -1 : 1, adj.flipV ? -1 : 1);
-                    try { ctx.drawImage(sourceToDraw, isRotated ? drawX - h/2 : drawX - w/2, isRotated ? drawY - w/2 : drawY - h/2, isRotated ? drawH : drawW, isRotated ? drawW : drawH); } catch (e){}
-                    ctx.restore(); 
 
+                    try { ctx.drawImage(sourceToDraw, isRotated ? drawX - h/2 : drawX - w/2, isRotated ? drawY - w/2 : drawY - h/2, isRotated ? drawH : drawW, isRotated ? drawW : drawH); } catch (e){}
+                    ctx.restore();
+                    
                     ctx.filter = 'none';
                 }
             });
@@ -1223,6 +1273,7 @@ function createAnimatedStripVideo() {
 
         recorder.start(); 
         draw();
+
         setTimeout(() => { isRecording = false; recorder.stop(); }, 5000);
     });
 }
@@ -1243,9 +1294,9 @@ async function processFinalWorkflow() {
 
     try {
         const finalStripBase64 = await generateCompositeImage();
+        
         let animatedVideoBlob = null; 
         let videoExt = 'webm';
-
         try {
             const videoRes = await createAnimatedStripVideo();
             animatedVideoBlob = videoRes.blob; 
@@ -1253,6 +1304,7 @@ async function processFinalWorkflow() {
         } catch (err) { console.warn("Video render skipped:", err); }
 
         document.getElementById('final-print-display').src = finalStripBase64;
+        
         if (animatedVideoBlob) {
             document.getElementById('final-video-display').src = URL.createObjectURL(animatedVideoBlob);
             document.getElementById('video-column').classList.remove('hidden');
@@ -1267,12 +1319,14 @@ async function processFinalWorkflow() {
         }
 
         loadingText.innerText = "Uploading to Cloud Gallery...";
+
         const formData = new FormData();
         const finalStripBlob = base64ToBlob(finalStripBase64);
         formData.append('finalStrip', finalStripBlob, 'final_strip.jpg');
         formData.append('layout', userLayout);
 
         let selectedRawPhotos = selectedPhotos.map(index => photos[index]);
+
         for (let i = 0; i < selectedRawPhotos.length; i++) {
             let rawBlob;
             if (selectedRawPhotos[i].startsWith('data:')) {
@@ -1295,9 +1349,10 @@ async function processFinalWorkflow() {
 
         const printArea = document.getElementById('print-area');
         printArea.innerHTML = '';
+        
         const printImg1 = document.createElement('img'); 
         printImg1.src = finalStripBase64;
-
+        
         if (userLayout === '1x4' || userLayout === '1x3') {
             const printImg2 = document.createElement('img'); 
             printImg2.src = finalStripBase64;
@@ -1310,13 +1365,16 @@ async function processFinalWorkflow() {
         }
 
         document.getElementById('qr-code-image').src = data.qrCodeUrl;
+
         loadingOverlay.classList.add('hidden');
         navigateTo('/qr');
-
+        
         startOutroTimer(30);
+
         requestAnimationFrame(() => {
             setTimeout(() => { window.print(); }, 1200);
         });
+
     } catch (error) {
         console.error("Workflow Error:", error);
         loadingOverlay.classList.add('hidden');
@@ -1328,7 +1386,9 @@ async function processFinalWorkflow() {
 function startOutroTimer(seconds) {
     const btn = document.getElementById('done-btn');
     btn.innerText = `Touch to Finish (${seconds}s)`;
+
     if (outroTimer) clearInterval(outroTimer);
+
     outroTimer = setInterval(() => {
         seconds--; 
         btn.innerText = `Touch to Finish (${seconds}s)`;
